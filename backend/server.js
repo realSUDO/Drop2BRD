@@ -97,12 +97,21 @@ app.post("/api/projects/:id/upload", authenticate, upload.single('file'), async 
 
     // Store chunks in memory (temporary)
     const cacheKey = `${userId}:${projectId}`;
-    projectsCache.set(cacheKey, {
+    const projectData = {
       id: projectId,
       userId,
       name: `Project ${projectCounter++}`,
       chunks: processedChunks,
       uploadedAt: new Date().toISOString(),
+      status: 'uploaded'
+    };
+    projectsCache.set(cacheKey, projectData);
+
+    // Create project metadata in Firestore
+    await firebase.saveProjectMetadata(userId, projectId, {
+      id: projectId,
+      name: projectData.name,
+      uploadedAt: projectData.uploadedAt,
       status: 'uploaded'
     });
 
@@ -160,10 +169,8 @@ app.post("/api/projects/:id/generate-brd", authenticate, async (req, res) => {
     // Save only the BRD to Firebase (with project metadata)
     await firebase.saveBRD(userId, projectId, brd);
     await firebase.saveProjectMetadata(userId, projectId, {
-      id: projectId,
-      name: project.name,
-      uploadedAt: project.uploadedAt,
-      status: 'completed'
+      status: 'completed',
+      updatedAt: new Date().toISOString()
     });
     
     // Clear chunks from memory after BRD is generated
