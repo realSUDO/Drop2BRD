@@ -1,6 +1,8 @@
 import { auth } from '../firebase';
 
-const API_BASE = "http://localhost:3001/api";
+const API_BASE = import.meta.env.PROD 
+  ? "https://fairy-nonprophetic-noncohesively.ngrok-free.dev/api"
+  : "http://localhost:3001/api";
 
 const getAuthHeaders = async () => {
   const user = auth.currentUser;

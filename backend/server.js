@@ -10,7 +10,10 @@ import * as firebase from "./firebase.js";
 const app = express();
 const PORT = 3001;
 
-app.use(cors());
+app.use(cors({
+  origin: ['http://localhost:5173', 'https://hackfest-844ce.web.app', 'https://hackfest-844ce.firebaseapp.com'],
+  credentials: true
+}));
 app.use(express.json());
 
 // Configure multer for file uploads
