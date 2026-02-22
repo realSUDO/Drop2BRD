@@ -9,6 +9,32 @@ Transform scattered communication data (emails, transcripts, CSVs, PDFs) into pr
 
 ---
 
+## 📹 Demo Video
+
+https://github.com/user-attachments/assets/2cbbd57b-a811-4157-9a88-50aae34d24fb
+
+---
+
+## 📸 Screenshots
+
+### Authentication
+![Authentication](media/auth.jpg)
+*Secure login with Google OAuth and Email/Password*
+
+### File Upload
+![File Upload](media/datadrop.jpg)
+*Drag & drop multiple CSV/PDF files with validation*
+
+### Loading Animation
+![Loading](media/loading.jpg)
+*Animated messages during BRD generation*
+
+### BRD Report
+![BRD Report](media/report.jpg)
+*Professional BRD with table of contents and rich editing*
+
+---
+
 ## 🎯 Problem Statement
 
 Organizations struggle to create professional Business Requirements Documents from scattered communication data. Manual BRD creation is time-consuming, inconsistent, and error-prone. Drop2BRD automates this process using AI, reducing documentation time by 80%.
