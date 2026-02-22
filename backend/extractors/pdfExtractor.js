@@ -1,11 +1,12 @@
 import fs from 'fs';
 import { createRequire } from 'module';
 const require = createRequire(import.meta.url);
-const pdfParse = require('pdf-parse');
+const { PDFParse } = require('pdf-parse');
 
 export async function extractTextFromPDF(filePath) {
   const dataBuffer = fs.readFileSync(filePath);
-  const data = await pdfParse(dataBuffer);
+  const parser = new PDFParse();
+  const data = await parser.parse(dataBuffer);
 
   return data.text
     .split('\n')
