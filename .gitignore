@@ -44,3 +44,9 @@ backend/serviceAccountKey.json
 working.md
 start.sh
 *.pdf
+
+# Documentation (for presentation prep)
+toPrepare.md
+qs.md
+context.md
+frontend/context.md
