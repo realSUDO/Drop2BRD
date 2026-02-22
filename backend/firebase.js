@@ -89,7 +89,7 @@ export const saveProjectMetadata = async (userId, projectId, projectData) => {
     await setDoc(doc(db, 'users', userId, 'projects', projectId), {
       ...projectData,
       updatedAt: new Date().toISOString()
-    });
+    }, { merge: true }); // Merge instead of overwrite
     console.log(`✅ Project metadata saved: ${projectId} for user: ${userId}`);
   } catch (error) {
     console.error(`❌ Failed to save project metadata ${projectId}:`, error.message);
