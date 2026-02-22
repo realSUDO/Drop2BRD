@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useParams } from 'react-router-dom';
-import { Copy, Edit3, Save, X } from 'lucide-react';
+import { Copy, Edit3, Save, X, Upload } from 'lucide-react';
 import SimpleMDE from 'react-simplemde-editor';
 import 'easymde/dist/easymde.min.css';
 import { auth } from '../firebase';
@@ -24,6 +24,7 @@ export default function Report() {
   const [isEditMode, setIsEditMode] = useState(false);
   const [editContent, setEditContent] = useState('');
   const [isSaving, setIsSaving] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
 
   // Extract headings from markdown content
   const extractHeadings = (markdown) => {
@@ -166,6 +167,56 @@ export default function Report() {
     return { 'Content-Type': 'application/json' };
   };
 
+  const handleExportPDF = async () => {
+    setIsExporting(true);
+    try {
+      console.log('📄 Exporting PDF...');
+      
+      // Add title to markdown
+      const pdfContent = `# Business Requirements Document\n\n---\n\n${brdContent}`;
+      
+      // Send markdown to md-to-pdf API with correct format
+      const formData = new URLSearchParams();
+      formData.append('markdown', pdfContent);
+      
+      const response = await fetch('https://md-to-pdf.fly.dev', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: formData
+      });
+
+      console.log('Response status:', response.status);
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('API Error:', errorText);
+        throw new Error(`PDF generation failed: ${response.status}`);
+      }
+
+      // Get PDF blob and download
+      const blob = await response.blob();
+      console.log('PDF blob size:', blob.size);
+      
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${projectName}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+      
+      console.log('✅ PDF exported successfully');
+    } catch (error) {
+      console.error('❌ Failed to export PDF:', error);
+      alert('Failed to export PDF: ' + error.message);
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
   const handleApplyEdit = async () => {
     if (!changeDescription.trim()) {
       alert('Please describe the change you want to make');
@@ -271,25 +322,36 @@ export default function Report() {
             <div className="bg-card border border-border rounded-figma p-8">
               <div className="flex items-center justify-between mb-6">
                 <h2 className="text-2xl font-bold text-white">Business Requirements Document</h2>
-                {isEditMode && (
-                  <div className="flex gap-2">
+                <div className="flex gap-2">
+                  {isEditMode ? (
+                    <>
+                      <button
+                        onClick={handleCancelEdit}
+                        className="px-4 py-2 bg-[#3D3D3D] hover:bg-[#4D4D4D] text-white rounded-figma text-sm flex items-center gap-2"
+                      >
+                        <X className="w-4 h-4" />
+                        Cancel
+                      </button>
+                      <button
+                        onClick={handleSaveEdit}
+                        disabled={isSaving}
+                        className="px-4 py-2 bg-btn-primary hover:bg-btn-primary-hover text-white rounded-figma text-sm flex items-center gap-2 disabled:opacity-50"
+                      >
+                        <Save className="w-4 h-4" />
+                        {isSaving ? 'Saving...' : 'Save'}
+                      </button>
+                    </>
+                  ) : (
                     <button
-                      onClick={handleCancelEdit}
-                      className="px-4 py-2 bg-[#3D3D3D] hover:bg-[#4D4D4D] text-white rounded-figma text-sm flex items-center gap-2"
-                    >
-                      <X className="w-4 h-4" />
-                      Cancel
-                    </button>
-                    <button
-                      onClick={handleSaveEdit}
-                      disabled={isSaving}
+                      onClick={handleExportPDF}
+                      disabled={isExporting}
                       className="px-4 py-2 bg-btn-primary hover:bg-btn-primary-hover text-white rounded-figma text-sm flex items-center gap-2 disabled:opacity-50"
                     >
-                      <Save className="w-4 h-4" />
-                      {isSaving ? 'Saving...' : 'Save'}
+                      <Upload className="w-4 h-4" />
+                      {isExporting ? 'Exporting...' : 'Export PDF'}
                     </button>
-                  </div>
-                )}
+                  )}
+                </div>
               </div>
               
               {isEditMode ? (
