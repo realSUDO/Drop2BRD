@@ -1,6 +1,7 @@
 import { useNavigate } from 'react-router-dom';
 import { useEffect, useState } from 'react';
-import { User, House } from 'lucide-react';
+import { User, House, LogOut } from 'lucide-react';
+import { logout } from '../firebase';
 import TopBar from '../components/TopBar';
 import ProjectCard from '../components/ProjectCard';
 import { api } from '../services/api';
@@ -14,6 +15,7 @@ export default function Dashboard() {
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [workspaces, setWorkspaces] = useState(['Team SSD']);
   const [currentWorkspace, setCurrentWorkspace] = useState('Team SSD');
+  const [settingsOpen, setSettingsOpen] = useState(false);
 
   useEffect(() => {
     loadProjects();
@@ -60,6 +62,15 @@ export default function Dashboard() {
       setWorkspaces([...workspaces, name.trim()]);
       setCurrentWorkspace(name.trim());
       setDropdownOpen(false);
+    }
+  };
+
+  const handleLogout = async () => {
+    try {
+      await logout();
+      navigate('/login');
+    } catch (error) {
+      console.error('Logout failed:', error);
     }
   };
 
@@ -158,14 +169,29 @@ export default function Dashboard() {
         </div>
         
         {/* User Settings - Bottom */}
-        <button
-          type="button"
-          onClick={() => alert('User settings')}
-          className="flex items-center gap-2.5 py-2.5 px-3.5 rounded-figma hover:bg-card transition-colors mt-auto"
-        >
-          <User className="w-[18px] h-[18px] text-[#939393]" />
-          <span className="text-sm font-normal text-[#939393]">Settings</span>
-        </button>
+        <div className="relative">
+          <button
+            type="button"
+            onClick={() => setSettingsOpen(!settingsOpen)}
+            className="w-full flex items-center gap-2.5 py-2.5 px-3.5 rounded-figma hover:bg-card transition-colors mt-auto"
+          >
+            <User className="w-[18px] h-[18px] text-[#939393]" />
+            <span className="text-sm font-normal text-[#939393]">Settings</span>
+          </button>
+          
+          {settingsOpen && (
+            <div className="absolute bottom-full left-0 right-0 mb-2 bg-card border border-border rounded-figma shadow-lg">
+              <button
+                type="button"
+                onClick={handleLogout}
+                className="w-full px-4 py-3 text-left text-white hover:bg-nav-active transition-colors flex items-center gap-2 rounded-figma"
+              >
+                <LogOut className="w-4 h-4" />
+                Logout
+              </button>
+            </div>
+          )}
+        </div>
         </div>
       </aside>
 

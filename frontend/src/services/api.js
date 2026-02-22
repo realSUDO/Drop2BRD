@@ -1,61 +1,89 @@
+import { auth } from '../firebase';
+
 const API_BASE = "http://localhost:3001/api";
+
+const getAuthHeaders = async () => {
+  const user = auth.currentUser;
+  if (user) {
+    const token = await user.getIdToken();
+    return {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${token}`
+    };
+  }
+  return { 'Content-Type': 'application/json' };
+};
 
 export const api = {
   async getProjects() {
-    const res = await fetch(`${API_BASE}/projects`);
+    const headers = await getAuthHeaders();
+    const res = await fetch(`${API_BASE}/projects`, { headers });
     return res.json();
   },
 
   async getProjectChunks(projectId) {
-    const res = await fetch(`${API_BASE}/projects/${projectId}/chunks`);
+    const headers = await getAuthHeaders();
+    const res = await fetch(`${API_BASE}/projects/${projectId}/chunks`, { headers });
     return res.json();
   },
 
   async uploadFile(projectId, file) {
+    const user = auth.currentUser;
+    const token = user ? await user.getIdToken() : '';
+    
     const formData = new FormData();
     formData.append('file', file);
     
     const res = await fetch(`${API_BASE}/projects/${projectId}/upload`, {
       method: "POST",
+      headers: {
+        'Authorization': `Bearer ${token}`
+      },
       body: formData,
     });
     return res.json();
   },
 
   async generateBRD(projectId, options = {}) {
+    const headers = await getAuthHeaders();
     const res = await fetch(`${API_BASE}/projects/${projectId}/generate-brd`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers,
       body: JSON.stringify(options),
     });
     return res.json();
   },
 
   async getBRD(projectId) {
-    const res = await fetch(`${API_BASE}/projects/${projectId}/brd`);
+    const headers = await getAuthHeaders();
+    const res = await fetch(`${API_BASE}/projects/${projectId}/brd`, { headers });
     return res.json();
   },
 
   async renameProject(projectId, name) {
+    const headers = await getAuthHeaders();
     const res = await fetch(`${API_BASE}/projects/${projectId}/rename`, {
       method: "PATCH",
-      headers: { "Content-Type": "application/json" },
+      headers,
       body: JSON.stringify({ name }),
     });
     return res.json();
   },
 
   async deleteProject(projectId) {
+    const headers = await getAuthHeaders();
     const res = await fetch(`${API_BASE}/projects/${projectId}`, {
       method: "DELETE",
+      headers,
     });
     return res.json();
   },
 
   async editBRD(projectId, changeDescription) {
+    const headers = await getAuthHeaders();
     const res = await fetch(`${API_BASE}/projects/${projectId}/edit-brd`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers,
       body: JSON.stringify({ changeDescription }),
     });
     return res.json();

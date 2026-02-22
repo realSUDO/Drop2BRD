@@ -5,8 +5,8 @@ const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 const GEMINI_API_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent";
 
 export async function generateBRDFromChunks(filteredChunks) {
-  // Take even fewer chunks with better distribution
-  const sampleSize = Math.min(20, filteredChunks.length);
+  // Take fewer chunks to leave more room for output
+  const sampleSize = Math.min(10, filteredChunks.length);
   const step = Math.floor(filteredChunks.length / sampleSize);
   const sampleChunks = [];
   
@@ -124,7 +124,7 @@ ${sampleChunks.map(c => c.text).join('\n\n')}`;
         }],
         generationConfig: {
           temperature: 0.1,
-          maxOutputTokens: 16000,
+          maxOutputTokens: 20000,
         }
       })
     });

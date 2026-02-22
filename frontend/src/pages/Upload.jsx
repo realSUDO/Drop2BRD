@@ -108,6 +108,16 @@ export default function Upload() {
     }
   };
 
+  if (isProcessing) {
+    return (
+      <div className="flex min-h-screen bg-primary items-center justify-center">
+        <div className="flex flex-col items-center gap-4">
+          <img src="/loading.gif" alt="Loading" className="w-100 h-100" />
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="flex flex-col min-h-screen bg-primary">
       <TopBar title="Upload Communication Data" className="text-gray-600" />

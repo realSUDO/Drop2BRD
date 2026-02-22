@@ -16,12 +16,62 @@ app.use(express.json());
 // Configure multer for file uploads
 const upload = multer({ dest: 'uploads/' });
 
+// In-memory storage for temporary project data
+const projectsCache = new Map();
 let projectCounter = 1;
 
+// Auth middleware
+const authenticate = async (req, res, next) => {
+  try {
+    const token = req.headers.authorization?.replace('Bearer ', '');
+    if (!token) {
+      return res.status(401).json({ error: 'No token provided' });
+    }
+    
+    const userId = await firebase.verifyToken(token);
+    req.userId = userId;
+    next();
+  } catch (error) {
+    console.error('Authentication failed:', error.message);
+    res.status(401).json({ error: 'Unauthorized' });
+  }
+};
+
+// Test Firebase connection on startup
+(async () => {
+  try {
+    const connected = await firebase.testConnection();
+    if (connected) {
+      console.log('🎉 Firebase is ready to use!\n');
+    } else {
+      console.log('⚠️  Firebase connection test failed. Check your configuration.\n');
+    }
+  } catch (error) {
+    console.error('❌ Firebase connection error:', error.message);
+    console.log('⚠️  Server will continue but Firebase features may not work.\n');
+  }
+})();
+
+// Test Firebase connection on startup
+(async () => {
+  try {
+    const connected = await firebase.testConnection();
+    if (connected) {
+      console.log('🎉 Firebase is ready to use!\n');
+    } else {
+      console.log('⚠️  Firebase connection test failed. Check your configuration.\n');
+    }
+  } catch (error) {
+    console.error('❌ Firebase connection error:', error.message);
+    console.log('⚠️  Server will continue but Firebase features may not work.\n');
+  }
+})();
+
 // Upload file and process
-app.post("/api/projects/:id/upload", upload.single('file'), async (req, res) => {
+app.post("/api/projects/:id/upload", authenticate, upload.single('file'), async (req, res) => {
   try {
     const projectId = req.params.id;
+    const userId = req.userId;
     const file = req.file;
 
     if (!file) {
@@ -45,9 +95,11 @@ app.post("/api/projects/:id/upload", upload.single('file'), async (req, res) => 
     // Process extracted texts
     const processedChunks = processExtractedTexts(texts, projectId, fileType);
 
-    // Store project data in Firebase
-    await firebase.saveProject(projectId, {
+    // Store chunks in memory (temporary)
+    const cacheKey = `${userId}:${projectId}`;
+    projectsCache.set(cacheKey, {
       id: projectId,
+      userId,
       name: `Project ${projectCounter++}`,
       chunks: processedChunks,
       uploadedAt: new Date().toISOString(),
@@ -81,18 +133,21 @@ app.post("/api/projects/:id/upload", upload.single('file'), async (req, res) => 
 });
 
 // Generate BRD from uploaded data
-app.post("/api/projects/:id/generate-brd", async (req, res) => {
+app.post("/api/projects/:id/generate-brd", authenticate, async (req, res) => {
   try {
     const projectId = req.params.id;
+    const userId = req.userId;
     
     console.log("\n" + "=".repeat(60));
     console.log("🚀 BRD GENERATION REQUEST");
     console.log("=".repeat(60));
     console.log(`📋 Project ID: ${projectId}`);
+    console.log(`👤 User ID: ${userId}`);
     console.log("");
 
-    // Get project data from Firebase
-    const project = await firebase.getProject(projectId);
+    // Get project data from memory
+    const cacheKey = `${userId}:${projectId}`;
+    const project = projectsCache.get(cacheKey);
     
     if (!project) {
       return res.status(404).json({ error: "Project not found. Please upload a file first." });
@@ -102,11 +157,17 @@ app.post("/api/projects/:id/generate-brd", async (req, res) => {
     const brd = await generateBRDFromChunks(project.chunks);
     console.log(`   ✓ Generated BRD (${brd.length} characters)`);
 
-    // Save BRD to Firebase
-    await firebase.saveBRD(projectId, brd);
+    // Save only the BRD to Firebase (with project metadata)
+    await firebase.saveBRD(userId, projectId, brd);
+    await firebase.saveProjectMetadata(userId, projectId, {
+      id: projectId,
+      name: project.name,
+      uploadedAt: project.uploadedAt,
+      status: 'completed'
+    });
     
-    // Update project status
-    await firebase.updateProject(projectId, { status: 'completed' });
+    // Clear chunks from memory after BRD is generated
+    projectsCache.delete(cacheKey);
 
     console.log("\n✅ BRD GENERATION COMPLETE");
     console.log("=".repeat(60) + "\n");
@@ -129,9 +190,10 @@ app.post("/api/projects/:id/generate-brd", async (req, res) => {
 });
 
 // Get all projects
-app.get("/api/projects", async (req, res) => {
+app.get("/api/projects", authenticate, async (req, res) => {
   try {
-    const projects = await firebase.getAllProjects();
+    const userId = req.userId;
+    const projects = await firebase.getAllProjectMetadata(userId);
     res.json(projects);
   } catch (error) {
     console.error('Error fetching projects:', error);
@@ -140,10 +202,21 @@ app.get("/api/projects", async (req, res) => {
 });
 
 // Rename project
-app.patch("/api/projects/:id/rename", async (req, res) => {
+app.patch("/api/projects/:id/rename", authenticate, async (req, res) => {
   try {
+    const userId = req.userId;
     const { name } = req.body;
-    await firebase.updateProject(req.params.id, { name });
+    
+    // Update in memory if exists
+    const cacheKey = `${userId}:${req.params.id}`;
+    const cachedProject = projectsCache.get(cacheKey);
+    if (cachedProject) {
+      cachedProject.name = name;
+      projectsCache.set(cacheKey, cachedProject);
+    }
+    
+    // Update in Firestore
+    await firebase.updateProjectMetadata(userId, req.params.id, { name });
     res.json({ success: true, name });
   } catch (error) {
     console.error('Error renaming project:', error);
@@ -152,10 +225,17 @@ app.patch("/api/projects/:id/rename", async (req, res) => {
 });
 
 // Delete project
-app.delete("/api/projects/:id", async (req, res) => {
+app.delete("/api/projects/:id", authenticate, async (req, res) => {
   try {
+    const userId = req.userId;
     const projectId = req.params.id;
-    await firebase.deleteProject(projectId);
+    
+    // Delete from memory
+    const cacheKey = `${userId}:${projectId}`;
+    projectsCache.delete(cacheKey);
+    
+    // Delete from Firestore
+    await firebase.deleteProject(userId, projectId);
     console.log(`🗑️  Deleted project: ${projectId}`);
     res.json({ success: true });
   } catch (error) {
@@ -165,9 +245,10 @@ app.delete("/api/projects/:id", async (req, res) => {
 });
 
 // Get generated BRD
-app.get("/api/projects/:id/brd", async (req, res) => {
+app.get("/api/projects/:id/brd", authenticate, async (req, res) => {
   try {
-    const brdData = await firebase.getBRD(req.params.id);
+    const userId = req.userId;
+    const brdData = await firebase.getBRD(userId, req.params.id);
     if (!brdData) {
       return res.status(404).json({ error: "BRD not found. Generate it first." });
     }
@@ -178,13 +259,30 @@ app.get("/api/projects/:id/brd", async (req, res) => {
   }
 });
 
+// Update BRD directly (manual edit)
+app.put("/api/projects/:id/brd", authenticate, async (req, res) => {
+  try {
+    const userId = req.userId;
+    const { content } = req.body;
+    
+    await firebase.updateBRD(userId, req.params.id, content);
+    console.log(`✅ BRD manually updated: ${req.params.id}`);
+    
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Error updating BRD:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // Edit BRD with AI
-app.post("/api/projects/:id/edit-brd", async (req, res) => {
+app.post("/api/projects/:id/edit-brd", authenticate, async (req, res) => {
   try {
     const projectId = req.params.id;
+    const userId = req.userId;
     const { changeDescription } = req.body;
     
-    const brdData = await firebase.getBRD(projectId);
+    const brdData = await firebase.getBRD(userId, projectId);
     if (!brdData) {
       return res.status(404).json({ error: "BRD not found" });
     }
@@ -239,7 +337,7 @@ Instructions:
       .trim();
 
     // Update BRD in Firebase
-    await firebase.updateBRD(projectId, updatedBRD);
+    await firebase.updateBRD(userId, projectId, updatedBRD);
 
     console.log("✅ BRD UPDATED");
     console.log("=".repeat(60) + "\n");

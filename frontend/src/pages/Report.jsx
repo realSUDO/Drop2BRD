@@ -1,5 +1,9 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useParams } from 'react-router-dom';
+import { Copy, Edit3, Save, X } from 'lucide-react';
+import SimpleMDE from 'react-simplemde-editor';
+import 'easymde/dist/easymde.min.css';
+import { auth } from '../firebase';
 import TopBar from '../components/TopBar';
 import EditSectionModal from '../components/EditSectionModal';
 import MarkdownView from '../components/MarkdownView';
@@ -16,6 +20,10 @@ export default function Report() {
   const [tableOfContents, setTableOfContents] = useState([]);
   const [selectedText, setSelectedText] = useState('');
   const [editingSection, setEditingSection] = useState(null);
+  const [selectionPopup, setSelectionPopup] = useState({ show: false, x: 0, y: 0 });
+  const [isEditMode, setIsEditMode] = useState(false);
+  const [editContent, setEditContent] = useState('');
+  const [isSaving, setIsSaving] = useState(false);
 
   // Extract headings from markdown content
   const extractHeadings = (markdown) => {
@@ -71,12 +79,91 @@ export default function Report() {
   }, [projectId]);
 
   const handleTextSelection = () => {
+    if (isEditMode) return; // Don't show popup in edit mode
+    
     const selection = window.getSelection();
     const text = selection.toString().trim();
     if (text) {
       setSelectedText(text);
-      setIsModalOpen(true);
+      
+      // Get selection position
+      const range = selection.getRangeAt(0);
+      const rect = range.getBoundingClientRect();
+      
+      setSelectionPopup({
+        show: true,
+        x: rect.left + rect.width / 2,
+        y: rect.top - 10
+      });
+    } else {
+      setSelectionPopup({ show: false, x: 0, y: 0 });
     }
+  };
+
+  const handleCopy = () => {
+    navigator.clipboard.writeText(selectedText);
+    setSelectionPopup({ show: false, x: 0, y: 0 });
+    alert('Copied to clipboard!');
+  };
+
+  const handleEdit = () => {
+    setSelectionPopup({ show: false, x: 0, y: 0 });
+    setIsModalOpen(true);
+  };
+
+  const handleDoubleClick = () => {
+    setSelectionPopup({ show: false, x: 0, y: 0 }); // Close popup when entering edit mode
+    setEditContent(brdContent);
+    setIsEditMode(true);
+  };
+
+  const handleSaveEdit = async () => {
+    setIsSaving(true);
+    try {
+      // Update BRD in backend
+      const response = await fetch(`http://localhost:3001/api/projects/${projectId}/brd`, {
+        method: 'PUT',
+        headers: await getAuthHeaders(),
+        body: JSON.stringify({ content: editContent })
+      });
+      
+      if (!response.ok) throw new Error('Failed to save');
+      
+      setBrdContent(editContent);
+      const headings = extractHeadings(editContent);
+      setTableOfContents(headings);
+      setIsEditMode(false);
+      console.log('✅ BRD saved successfully');
+    } catch (error) {
+      console.error('❌ Failed to save:', error);
+      alert('Failed to save changes');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleCancelEdit = () => {
+    setIsEditMode(false);
+    setEditContent('');
+  };
+
+  const editorOptions = useMemo(() => ({
+    spellChecker: false,
+    placeholder: 'Edit your BRD...',
+    status: false,
+    toolbar: ['bold', 'italic', 'heading', '|', 'quote', 'unordered-list', 'ordered-list', '|', 'link', 'preview'],
+  }), []);
+
+  const getAuthHeaders = async () => {
+    const user = auth.currentUser;
+    if (user) {
+      const token = await user.getIdToken();
+      return {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      };
+    }
+    return { 'Content-Type': 'application/json' };
   };
 
   const handleApplyEdit = async () => {
@@ -93,12 +180,10 @@ export default function Report() {
     // Find the section containing the selected text
     const sections = brdContent.split(/(?=^##\s)/m);
     let sectionIndex = -1;
-    let sectionContent = '';
     
     for (let i = 0; i < sections.length; i++) {
       if (sections[i].includes(selectedText)) {
         sectionIndex = i;
-        sectionContent = sections[i];
         break;
       }
     }
@@ -114,65 +199,18 @@ export default function Report() {
     try {
       console.log('✏️ Editing selected text:', selectedText.substring(0, 50) + '...');
       
-      const prompt = `You are editing a section of a Business Requirements Document.
-
-Original section:
-${sectionContent}
-
-Selected text to modify:
-"${selectedText}"
-
-Requested change:
-${changeDescription}
-
-Instructions:
-- Apply the change ONLY to the selected text
-- Return the COMPLETE updated section with the change applied
-- Maintain the same markdown formatting and structure
-- Keep the section heading unchanged
-- Do NOT add explanations, just return the updated section`;
-
-      const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${process.env.GEMINI_API_KEY}`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          contents: [{
-            parts: [{ text: prompt }]
-          }],
-          generationConfig: {
-            temperature: 0.2,
-            maxOutputTokens: 4000,
-          }
-        })
-      });
-
-      const data = await response.json();
+      // Call backend API to edit the BRD
+      const result = await api.editBRD(projectId, `Change "${selectedText.substring(0, 100)}..." to: ${changeDescription}`);
+      console.log('✅ Edit applied successfully');
       
-      if (!response.ok) {
-        throw new Error(data.error?.message || "API error");
-      }
-
-      const updatedSection = data.candidates[0].content.parts[0].text
-        .replace(/```markdown\n?/g, '')
-        .replace(/```\n?/g, '')
-        .trim();
-
-      // Replace the section in the full BRD
-      sections[sectionIndex] = updatedSection;
-      const updatedBRD = sections.join('');
-      
-      setBrdContent(updatedBRD);
-      
-      // Update on backend
-      await api.editBRD(projectId, `Updated section with: ${changeDescription}`);
+      setBrdContent(result.brd);
       
       // Update table of contents
-      const headings = extractHeadings(updatedBRD);
+      const headings = extractHeadings(result.brd);
       setTableOfContents(headings);
       
       setChangeDescription('');
       setSelectedText('');
-      console.log('✅ Edit applied successfully');
     } catch (error) {
       console.error('❌ Failed to apply edit:', error);
       alert('Failed to apply edit: ' + error.message);
@@ -227,26 +265,80 @@ Instructions:
         </aside>
 
         {/* Main Content */}
-        <main className="flex-1 overflow-auto">
+        <main className="flex-1 overflow-auto" onDoubleClick={handleDoubleClick}>
           <div className="max-w-5xl mx-auto px-8 py-8">
             {/* BRD Content */}
             <div className="bg-card border border-border rounded-figma p-8">
               <div className="flex items-center justify-between mb-6">
                 <h2 className="text-2xl font-bold text-white">Business Requirements Document</h2>
-                <div className="text-sm text-[#939393]">
-                  {selectedText ? 'Text selected - Click Edit to modify' : 'Select text to edit'}
-                </div>
+                {isEditMode && (
+                  <div className="flex gap-2">
+                    <button
+                      onClick={handleCancelEdit}
+                      className="px-4 py-2 bg-[#3D3D3D] hover:bg-[#4D4D4D] text-white rounded-figma text-sm flex items-center gap-2"
+                    >
+                      <X className="w-4 h-4" />
+                      Cancel
+                    </button>
+                    <button
+                      onClick={handleSaveEdit}
+                      disabled={isSaving}
+                      className="px-4 py-2 bg-btn-primary hover:bg-btn-primary-hover text-white rounded-figma text-sm flex items-center gap-2 disabled:opacity-50"
+                    >
+                      <Save className="w-4 h-4" />
+                      {isSaving ? 'Saving...' : 'Save'}
+                    </button>
+                  </div>
+                )}
               </div>
-              <article 
-                className="prose prose-invert max-w-none"
-                onMouseUp={handleTextSelection}
-              >
-                <MarkdownView content={brdContent} editingSection={editingSection} />
-              </article>
+              
+              {isEditMode ? (
+                <div className="markdown-editor">
+                  <SimpleMDE
+                    value={editContent}
+                    onChange={setEditContent}
+                    options={editorOptions}
+                  />
+                </div>
+              ) : (
+                <article 
+                  className="prose prose-invert max-w-none selection:bg-[#4D4D4D] selection:text-white"
+                  onMouseUp={handleTextSelection}
+                >
+                  <MarkdownView content={brdContent} editingSection={editingSection} />
+                </article>
+              )}
             </div>
           </div>
         </main>
       </div>
+
+      {/* Selection Popup */}
+      {selectionPopup.show && (
+        <div 
+          className="fixed z-50 flex gap-2 bg-surface border border-border rounded-lg shadow-lg p-2"
+          style={{ 
+            left: `${selectionPopup.x}px`, 
+            top: `${selectionPopup.y}px`,
+            transform: 'translate(-50%, -100%)'
+          }}
+        >
+          <button
+            onClick={handleCopy}
+            className="p-2 hover:bg-nav-active rounded transition-colors"
+            title="Copy"
+          >
+            <Copy className="w-4 h-4 text-white" />
+          </button>
+          <button
+            onClick={handleEdit}
+            className="p-2 hover:bg-nav-active rounded transition-colors"
+            title="Edit with AI"
+          >
+            <Edit3 className="w-4 h-4 text-white" />
+          </button>
+        </div>
+      )}
 
       <EditSectionModal
         isOpen={isModalOpen}

@@ -4,6 +4,60 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Dark theme for markdown editor */
+.markdown-editor .EasyMDEContainer {
+  background: #1E1E1E;
+}
+
+.markdown-editor .EasyMDEContainer .CodeMirror {
+  background: #1E1E1E;
+  color: #E0E0E0;
+  border: 1px solid #3D3D3D;
+  border-radius: 8px;
+  font-family: 'Inter', sans-serif;
+  min-height: 500px;
+}
+
+.markdown-editor .editor-toolbar {
+  background: #2A2A2A;
+  border: 1px solid #3D3D3D;
+  border-bottom: none;
+  border-radius: 8px 8px 0 0;
+}
+
+.markdown-editor .editor-toolbar button {
+  color: #B0B0B0 !important;
+}
+
+.markdown-editor .editor-toolbar button:hover {
+  background: #3D3D3D;
+  border-color: #4D4D4D;
+}
+
+.markdown-editor .editor-toolbar button.active {
+  background: #3D3D3D;
+  color: #FFFFFF !important;
+}
+
+.markdown-editor .editor-toolbar i.separator {
+  border-left: 1px solid #3D3D3D;
+  border-right: 1px solid #3D3D3D;
+}
+
+.markdown-editor .CodeMirror-cursor {
+  border-left: 1px solid #E0E0E0;
+}
+
+.markdown-editor .CodeMirror-selected {
+  background: #4D4D4D !important;
+}
+
+.markdown-editor .CodeMirror-line::selection,
+.markdown-editor .CodeMirror-line > span::selection,
+.markdown-editor .CodeMirror-line > span > span::selection {
+  background: #4D4D4D;
+}
+
 @layer base {
   body {
     @apply bg-primary text-white font-sans antialiased;

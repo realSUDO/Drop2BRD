@@ -35,6 +35,7 @@ yarn-error.log*
 # Firebase
 .firebase/
 firebase-debug.log
+backend/serviceAccountKey.json
 
 # Misc
 .cache/
