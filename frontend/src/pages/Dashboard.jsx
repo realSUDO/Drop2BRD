@@ -28,9 +28,11 @@ export default function Dashboard() {
   const loadProjects = async () => {
     try {
       const data = await api.getProjects();
+      console.log('📊 Loaded projects:', data);
       setProjects(data);
     } catch (error) {
       console.error('Failed to load projects:', error);
+      setProjects([]); // Set empty array on error
     } finally {
       setLoading(false);
     }
@@ -57,7 +59,7 @@ export default function Dashboard() {
   };
 
   const filteredProjects = projects.filter(p => 
-    p.name.toLowerCase().includes(searchQuery.toLowerCase())
+    p?.name?.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   const handleNewWorkspace = () => {
