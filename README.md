@@ -4,6 +4,8 @@
 
 Transform scattered communication data (emails, transcripts, CSVs, PDFs) into professional, enterprise-grade Business Requirements Documents in minutes.
 
+🌐 **Live Demo:** [https://hackfest-844ce.web.app](https://hackfest-844ce.web.app)
+
 [![Live Demo](https://img.shields.io/badge/demo-live-brightgreen)](https://hackfest-844ce.web.app)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
