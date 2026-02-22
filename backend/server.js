@@ -76,6 +76,7 @@ app.post("/api/projects/:id/upload", authenticate, upload.single('file'), async 
     const projectId = req.params.id;
     const userId = req.userId;
     const file = req.file;
+    const projectName = req.body.projectName || `Project ${projectCounter++}`;
 
     if (!file) {
       return res.status(400).json({ error: "No file uploaded" });
@@ -87,6 +88,7 @@ app.post("/api/projects/:id/upload", authenticate, upload.single('file'), async 
     console.log(`📋 Project ID: ${projectId}`);
     console.log(`📁 Filename: ${file.originalname}`);
     console.log(`📊 Size: ${(file.size / 1024).toFixed(2)} KB`);
+    console.log(`📝 Project Name: ${projectName}`);
     console.log("");
 
     // Detect file type
@@ -100,23 +102,33 @@ app.post("/api/projects/:id/upload", authenticate, upload.single('file'), async 
 
     // Store chunks in memory (temporary)
     const cacheKey = `${userId}:${projectId}`;
-    const projectData = {
-      id: projectId,
-      userId,
-      name: `Project ${projectCounter++}`,
-      chunks: processedChunks,
-      uploadedAt: new Date().toISOString(),
-      status: 'uploaded'
-    };
-    projectsCache.set(cacheKey, projectData);
+    
+    // Check if project already exists in cache
+    let existingProject = projectsCache.get(cacheKey);
+    
+    if (existingProject) {
+      // Append chunks to existing project
+      existingProject.chunks.push(...processedChunks);
+    } else {
+      // Create new project
+      const projectData = {
+        id: projectId,
+        userId,
+        name: projectName,
+        chunks: processedChunks,
+        uploadedAt: new Date().toISOString(),
+        status: 'uploaded'
+      };
+      projectsCache.set(cacheKey, projectData);
 
-    // Create project metadata in Firestore
-    await firebase.saveProjectMetadata(userId, projectId, {
-      id: projectId,
-      name: projectData.name,
-      uploadedAt: projectData.uploadedAt,
-      status: 'uploaded'
-    });
+      // Create project metadata in Firestore
+      await firebase.saveProjectMetadata(userId, projectId, {
+        id: projectId,
+        name: projectName,
+        uploadedAt: projectData.uploadedAt,
+        status: 'uploaded'
+      });
+    }
 
     // Clean up uploaded file
     fs.unlinkSync(file.path);

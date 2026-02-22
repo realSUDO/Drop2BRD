@@ -32,12 +32,15 @@ export const api = {
     return res.json();
   },
 
-  async uploadFile(projectId, file) {
+  async uploadFile(projectId, file, projectName) {
     const user = auth.currentUser;
     const token = user ? await user.getIdToken() : '';
     
     const formData = new FormData();
     formData.append('file', file);
+    if (projectName) {
+      formData.append('projectName', projectName);
+    }
     
     const res = await fetch(`${API_BASE}/projects/${projectId}/upload`, {
       method: "POST",

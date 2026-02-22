@@ -94,19 +94,14 @@ export default function Upload() {
     
     try {
       const projectId = Date.now().toString();
+      const finalProjectName = projectName.trim() || `Project ${Date.now()}`;
       
-      // Upload all files
+      // Upload all files with project name
       for (const file of uploadedFiles) {
         console.log(`📤 Uploading ${file.name}...`);
-        await api.uploadFile(projectId, file);
+        await api.uploadFile(projectId, file, finalProjectName);
       }
       console.log('✅ All files uploaded and processed');
-      
-      // Set project name if provided
-      if (projectName.trim()) {
-        await api.renameProject(projectId, projectName.trim());
-        console.log(`✏️ Project renamed to: ${projectName.trim()}`);
-      }
       
       // Generate BRD
       console.log('🤖 Generating BRD...');
