@@ -17,6 +17,10 @@ export async function generateBRDFromChunks(filteredChunks) {
     }
   }
   
+  console.log(`   📊 Sampled ${sampleChunks.length} chunks from ${filteredChunks.length} total`);
+  const totalInputChars = sampleChunks.reduce((sum, c) => sum + c.text.length, 0);
+  console.log(`   📝 Total input characters: ${totalInputChars}`);
+  
 //   const prompt = `You are a Senior Business Analyst producing an enterprise-grade
 // Business Requirements Document (BRD) for internal and executive stakeholders.
 //

@@ -11,12 +11,7 @@ const app = express();
 const PORT = 3001;
 
 app.use(cors({
-  origin: [
-    'http://localhost:5173', 
-    'https://hackfest-844ce.web.app', 
-    'https://hackfest-844ce.firebaseapp.com',
-    'https://fairy-nonprophetic-noncohesively.ngrok-free.dev'
-  ],
+  origin: true, // Allow all origins
   credentials: true
 }));
 app.use(express.json());
