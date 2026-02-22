@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { FileChartColumn, FileText, X } from 'lucide-react';
 import TopBar from '../components/TopBar';
@@ -10,6 +10,7 @@ export default function Upload() {
   const [uploadedFiles, setUploadedFiles] = useState([]);
   const [isProcessing, setIsProcessing] = useState(false);
   const [projectName, setProjectName] = useState('');
+  const [loadingMessage, setLoadingMessage] = useState('');
 
   const handleDrop = (e) => {
     e.preventDefault();
@@ -77,6 +78,20 @@ export default function Upload() {
 
     setIsProcessing(true);
     
+    // Animated messages loop
+    const messages = [
+      'Please be patient',
+      'We are chopping your data',
+      'Nitpicking useful stuff',
+      'Requesting the writer T_T'
+    ];
+    let messageIndex = 0;
+    
+    const messageInterval = setInterval(() => {
+      setLoadingMessage(messages[messageIndex % messages.length]);
+      messageIndex++;
+    }, 2000);
+    
     try {
       const projectId = Date.now().toString();
       
@@ -104,15 +119,20 @@ export default function Upload() {
       console.error('❌ Failed:', error);
       alert('Failed to process files: ' + error.message);
     } finally {
+      clearInterval(messageInterval);
       setIsProcessing(false);
+      setLoadingMessage('');
     }
   };
 
   if (isProcessing) {
     return (
       <div className="flex min-h-screen bg-primary items-center justify-center">
-        <div className="flex flex-col items-center gap-4">
-          <img src="/loading.gif" alt="Loading" className="w-100 h-100" />
+        <div className="relative inline-block">
+          <img src="/loading.gif" alt="Loading" className="w-100 h-100 block" />
+          <div className="absolute inset-0 flex items-start justify-center pt-40 text-2xl text-gray-400 font-medium animate-fade-in-out whitespace-nowrap" style={{ zIndex: 45 }}>
+            {loadingMessage}
+          </div>
         </div>
       </div>
     );

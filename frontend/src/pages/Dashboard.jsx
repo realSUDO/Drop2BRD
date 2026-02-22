@@ -2,20 +2,24 @@ import { useNavigate } from 'react-router-dom';
 import { useEffect, useState } from 'react';
 import { User, House, LogOut } from 'lucide-react';
 import { logout } from '../firebase';
+import { useAuth } from '../context/AuthContext';
 import TopBar from '../components/TopBar';
 import ProjectCard from '../components/ProjectCard';
 import { api } from '../services/api';
 
 export default function Dashboard() {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [projects, setProjects] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [dropdownOpen, setDropdownOpen] = useState(false);
-  const [workspaces, setWorkspaces] = useState(['Team SSD']);
-  const [currentWorkspace, setCurrentWorkspace] = useState('Team SSD');
+  const [workspaces, setWorkspaces] = useState(['My Workspace']);
+  const [currentWorkspace, setCurrentWorkspace] = useState('My Workspace');
   const [settingsOpen, setSettingsOpen] = useState(false);
+
+  const userName = user?.displayName || user?.email?.split('@')[0] || 'User';
 
   useEffect(() => {
     loadProjects();
@@ -181,6 +185,10 @@ export default function Dashboard() {
           
           {settingsOpen && (
             <div className="absolute bottom-full left-0 right-0 mb-2 bg-card border border-border rounded-figma shadow-lg">
+              <div className="px-4 py-2 border-b border-border">
+                <p className="text-xs text-[#939393]">Signed in as</p>
+                <p className="text-sm text-white font-medium">{userName}</p>
+              </div>
               <button
                 type="button"
                 onClick={handleLogout}

@@ -1,5 +1,14 @@
 import { initializeApp } from 'firebase/app';
-import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged } from 'firebase/auth';
+import { 
+  getAuth, 
+  GoogleAuthProvider, 
+  signInWithPopup, 
+  signOut, 
+  onAuthStateChanged,
+  createUserWithEmailAndPassword,
+  signInWithEmailAndPassword,
+  updateProfile
+} from 'firebase/auth';
 
 const firebaseConfig = {
   apiKey: "AIzaSyD30YmJWowF-GX1nCfg735C3g5Fil8DJh8",
@@ -15,5 +24,13 @@ export const auth = getAuth(app);
 export const googleProvider = new GoogleAuthProvider();
 
 export const signInWithGoogle = () => signInWithPopup(auth, googleProvider);
+export const signUpWithEmail = async (email, password, name) => {
+  const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+  if (name) {
+    await updateProfile(userCredential.user, { displayName: name });
+  }
+  return userCredential;
+};
+export const signInWithEmail = (email, password) => signInWithEmailAndPassword(auth, email, password);
 export const logout = () => signOut(auth);
 export { onAuthStateChanged };
