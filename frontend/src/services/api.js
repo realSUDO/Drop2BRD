@@ -6,14 +6,17 @@ const API_BASE = import.meta.env.PROD
 
 const getAuthHeaders = async () => {
   const user = auth.currentUser;
+  const headers = {
+    'Content-Type': 'application/json',
+    'ngrok-skip-browser-warning': 'true'
+  };
+  
   if (user) {
     const token = await user.getIdToken();
-    return {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${token}`
-    };
+    headers['Authorization'] = `Bearer ${token}`;
   }
-  return { 'Content-Type': 'application/json' };
+  
+  return headers;
 };
 
 export const api = {
@@ -39,7 +42,8 @@ export const api = {
     const res = await fetch(`${API_BASE}/projects/${projectId}/upload`, {
       method: "POST",
       headers: {
-        'Authorization': `Bearer ${token}`
+        'Authorization': `Bearer ${token}`,
+        'ngrok-skip-browser-warning': 'true'
       },
       body: formData,
     });
